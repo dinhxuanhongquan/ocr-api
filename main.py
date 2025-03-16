@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from jose import JWTError, jwt
@@ -169,16 +169,30 @@ async def google_login(request: Request, db: Session = Depends(get_db)):
         # Create JWT token
         access_token, jit = create_token(db_user.user_id, db_user.username)
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "jit": jit,
-            "user": {
-                "user_id": db_user.user_id,
-                "username": db_user.username,
-                "email": db_user.email
+        # return {
+        #     "access_token": access_token,
+        #     "token_type": "bearer",
+        #     "jit": jit,
+        #     "user": {
+        #         "user_id": db_user.user_id,
+        #         "username": db_user.username,
+        #         "email": db_user.email
+        #     }
+        # }
+        # return json respone
+        return JSONResponse(
+            status_code=200,
+            content={
+                "Access_token": access_token,
+                "Token_type": "Bearer",
+                "Jit": jit,
+                "User": {
+                    "User_id": db_user.user_id,
+                    "Username": db_user.username,
+                    "Email": db_user.email
+                }
             }
-        }
+        )
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -236,7 +250,13 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return {"message": "User created successfully"}
+    # return {"message": "User created successfully"}
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Message": "User created successfully!"
+        }
+    )
 
 @app.post("/token")
 async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -248,15 +268,27 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Sessio
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token, jit = create_token(user.user_id, user.username)
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "user_id": user.user_id,
-            "username": user.username,
-            "email": user.email
+    # return {
+    #     "access_token": access_token,
+    #     "token_type": "bearer",
+    #     "user": {
+    #         "user_id": user.user_id,
+    #         "username": user.username,
+    #         "email": user.email
+    #     }
+    # }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Access_token": access_token,
+            "Token_type": "Bearer",
+            "User":{
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email
+            }
         }
-    }
+    )
 
 @app.post("/logout")
 async def logout(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -281,7 +313,13 @@ async def logout(request: Request, current_user: User = Depends(get_current_user
         db.add(db_blacklist)
         db.commit()
         
-        return {"message": "Successfully logged out"}
+        # return {"message": "Successfully logged out"}
+        return JSONResponse(
+            status_code=200,
+            content={
+                "Message": "Successfully logged out!"
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -316,7 +354,14 @@ async def upload_video(
         db.commit()
         db.refresh(video)
 
-        return {"message": "Video uploaded successfully", "file_url": file_url}
+        # return {"message": "Video uploaded successfully", "file_url": file_url}
+        return JSONResponse(
+            status_code=200,
+            content={
+                "Message": "Video uploaded successfully!",
+                "File_url":file_url
+            }
+        )
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
