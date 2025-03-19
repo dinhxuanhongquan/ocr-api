@@ -155,121 +155,123 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-@app.get('/login/google')
-async def google_login(request: Request, db: Session = Depends(get_db)):
-    # Kiểm tra xem callback đã quay về (chứa 'code') chưa
-    if 'code' not in request.query_params:
-        # -----------------------
-        # BƯỚC 1: Chưa có 'code', tức là đang bắt đầu flow đăng nhập
-        # -----------------------
-        redirect_uri = request.url_for('google_login')  # chính route này, /login/google
-        # Gọi hàm authorize_redirect => Authlib sẽ:
-        #  1) Tạo 1 random `state` và lưu vào session
-        #  2) Chuyển hướng user sang Google kèm `state`
-        return await oauth.google.authorize_redirect(request, redirect_uri)
-    else:
-        # -----------------------
-        # BƯỚC 2: Đã được Google chuyển về, có 'code', 'state'
-        # -----------------------
-        try:
-            # Lấy token từ Google (dùng code + state đã lưu trong session)
-            token = await oauth.google.authorize_access_token(request)
-            if not token:
-                raise HTTPException(status_code=400, detail="Failed to get token from Google")
-            
-            # Lấy user info
-            user_info = token.get("userinfo")
-            if not user_info or "email" not in user_info:
-                raise HTTPException(status_code=400, detail="Failed to get user info from Google")
 
-            # Check user trong DB
-            db_user = db.query(User).filter(User.email == user_info["email"]).first()
-            if not db_user:
-                # Tạo user mới nếu chưa tồn tại
-                username = user_info["email"].split("@")[0]
-                while db.query(User).filter(User.username == username).first():
-                    username = f"{username}{os.urandom(2).hex()}"
-                
-                db_user = User(
-                    username=username,
-                    email=user_info["email"],
-                    password=get_password_hash(os.urandom(32).hex())
-                )
-                db.add(db_user)
-                db.commit()
-                db.refresh(db_user)
-            
-            # Tạo JWT token
-            access_token, jit = create_token(db_user.user_id, db_user.username)
-            
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "jit": jit,
-                "user": {
-                    "user_id": db_user.user_id,
-                    "username": db_user.username,
-                    "email": db_user.email
-                }
-            }
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Google authentication failed: {str(e)}"
-            )
+
+from fastapi.responses import JSONResponse
+
+
+
+# @app.get('/login/google')
+# async def google_login(request: Request, db: Session = Depends(get_db)):
+#     try:
+#         if "code" not in request.query_params:
+#             # Chưa có code -> Chuyển hướng đến Google để đăng nhập
+#             redirect_uri = request.url_for("google_login")
+#             return await oauth.google.authorize_redirect(request, redirect_uri)
+
+#         # Lấy token từ Google bằng code đã nhận
+#         token = await oauth.google.authorize_access_token(request)
+#         if not token:
+#             raise HTTPException(status_code=400, detail="Failed to get token from Google")
+
+#         # Lấy thông tin người dùng từ token
+#         user_info = token.get("userinfo")
+#         if not user_info or "email" not in user_info:
+#             raise HTTPException(status_code=400, detail="Failed to get user info from Google")
+
+#         # Kiểm tra user trong database
+#         db_user = db.query(User).filter(User.email == user_info["email"]).first()
         
-@app.get("/login/microsoft")
-async def microsoft_login(request: Request, db: Session = Depends(get_db)):
-    # BƯỚC 1: Chưa có ?code= => Bắt đầu đăng nhập
-    if "code" not in request.query_params:
-        # Tạo redirect_uri chính là route này => Authlib sinh 'state' và chuyển hướng sang Microsoft
-        redirect_uri = request.url_for("microsoft_login")  # => http://localhost:8000/login/microsoft
-        return await oauth.microsoft.authorize_redirect(request, redirect_uri)
-    else:
-        # BƯỚC 2: Microsoft đã redirect quay về kèm ?code=xxx&state=yyy => Xử lý callback
-        try:
-            token = await oauth.microsoft.authorize_access_token(request)
-            if not token:
-                raise HTTPException(status_code=400, detail="Failed to get token from Microsoft")
+#         if not db_user:
+#             # Tạo username từ email (tránh trùng lặp bằng cách thêm UUID ngắn)
+#             username_base = user_info["email"].split("@")[0]
+#             username = username_base
+#             while db.query(User).filter(User.username == username).first():
+#                 username = f"{username_base}_{uuid.uuid4().hex[:6]}"  # Thêm 6 ký tự ngẫu nhiên
+            
+#             # Tạo user mới
+#             db_user = User(
+#                 username=username,
+#                 email=user_info["email"],
+#                 password=get_password_hash(os.urandom(32).hex())  # Mật khẩu ngẫu nhiên, không sử dụng được
+#             )
+#             db.add(db_user)
+#             db.commit()
+#             db.refresh(db_user)
 
-            user_info = token.get("userinfo")
-            if not user_info or "email" not in user_info:
-                raise HTTPException(status_code=400, detail="Failed to get user info from Microsoft")
+#         # Tạo JWT token
+#         access_token, jit = create_token(db_user.user_id, db_user.username)
 
-            # Check user in DB, or create new
-            db_user = db.query(User).filter(User.email == user_info["email"]).first()
-            if not db_user:
-                username = user_info["email"].split("@")[0]
-                while db.query(User).filter(User.username == username).first():
-                    username += os.urandom(2).hex()
+#         # **Lưu access_token vào session**
+#         request.session["access_token"] = access_token
+#         request.session["user_info"] = {
+#             "user_id": db_user.user_id,
+#             "username": db_user.username,
+#             "email": db_user.email
+#         }
 
-                db_user = User(
-                    username=username,
-                    email=user_info["email"],
-                    password=get_password_hash(os.urandom(32).hex())
-                )
-                db.add(db_user)
-                db.commit()
-                db.refresh(db_user)
+#         return JSONResponse(content={"message": "Login successful, token saved in session"}, status_code=200)
 
-            # Tạo JWT
-            access_token, jit = create_token(db_user.user_id, db_user.username)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "jit": jit,
-                "user": {
-                    "user_id": db_user.user_id,
-                    "username": db_user.username,
-                    "email": db_user.email
-                }
-            }
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Microsoft authentication failed: {str(e)}"
-            )
+        
+
+
+
+        
+# @app.get("/login/microsoft")
+# async def microsoft_login(request: Request, db: Session = Depends(get_db)):
+#     # BƯỚC 1: Chưa có ?code= => Bắt đầu đăng nhập
+#     if "code" not in request.query_params:
+#         # Tạo redirect_uri chính là route này => Authlib sinh 'state' và chuyển hướng sang Microsoft
+#         redirect_uri = request.url_for("microsoft_login")  # => http://localhost:8000/login/microsoft
+#         return await oauth.microsoft.authorize_redirect(request, redirect_uri)
+#     else:
+#         # BƯỚC 2: Microsoft đã redirect quay về kèm ?code=xxx&state=yyy => Xử lý callback
+#         try:
+#             token = await oauth.microsoft.authorize_access_token(request)
+#             if not token:
+#                 raise HTTPException(status_code=400, detail="Failed to get token from Microsoft")
+
+#             user_info = token.get("userinfo")
+#             if not user_info or "email" not in user_info:
+#                 raise HTTPException(status_code=400, detail="Failed to get user info from Microsoft")
+
+#             # Check user in DB, or create new
+#             db_user = db.query(User).filter(User.email == user_info["email"]).first()
+#             if not db_user:
+#                 username = user_info["email"].split("@")[0]
+#                 while db.query(User).filter(User.username == username).first():
+#                     username += os.urandom(2).hex()
+
+#                 db_user = User(
+#                     username=username,
+#                     email=user_info["email"],
+#                     password=get_password_hash(os.urandom(32).hex())
+#                 )
+#                 db.add(db_user)
+#                 db.commit()
+#                 db.refresh(db_user)
+
+#             # Tạo JWT
+#             access_token, jit = create_token(db_user.user_id, db_user.username)
+
+#             return {
+#                 "access_token": access_token,
+#                 "token_type": "bearer",
+#                 "jit": jit,
+#                 "user": {
+#                     "user_id": db_user.user_id,
+#                     "username": db_user.username,
+#                     "email": db_user.email
+#                 }
+#             }
+#         except Exception as e:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail=f"Microsoft authentication failed: {str(e)}"
+#             )
 
 
 
@@ -423,6 +425,44 @@ async def upload_video(
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
+
+# @app.get("/videos")
+# async def get_videos(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+#     # Lay danh sach video cua user
+#     videos = db.query(Video).filter(Video.user_id == current_user.user_id).all()
+#     # Dowload tat ca vidieo ve theo danh sach
+#     for video in videos:
+#         s3.s3_client.download_file(s3.bucket_name, video.file_name, f"temp/{video.file_name}")
+#     return JSONResponse(
+#         status_code=200,
+#         content={
+#             "Videos": [video.file_name for video in videos]
+#         }
+#     )
+
+#  Get all video_name of user in database
+@app.get("/videos")
+async def get_videos_name(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    videos = db.query(Video).filter(Video.user_id == current_user.user_id).all()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Videos": [video.file_name for video in videos]
+        }
+    )
+
+# Get video by video_name
+@app.get("/videos/{video_name}")
+async def get_video(video_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    video = db.query(Video).filter(Video.file_name == video_name).first()
+    # Download video from S3 by video_name
+    s3.s3_client.download_file(s3.bucket_name, video.file_name, f"temp/{video.file_name}")
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Message": "Video downloaded successfully!"
+        }
+    )
 
 @app.post("/login")
 async def login(user: UserLogin, db: Session = Depends(get_db)):

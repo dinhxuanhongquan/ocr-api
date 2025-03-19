@@ -77,6 +77,8 @@ uvicorn main:app --reload
 - GET `/login/microsoft` - Microsoft OAuth login
 - POST `/logout` - Logout user
 - POST `/videos/upload` - Upload a video file
+- GET `/videos`- Get all video of user
+- GET `/videos/{video_name}` Download video with video_name from S3
 
 ## License
 
