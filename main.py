@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from jose import JWTError, jwt
@@ -70,6 +70,8 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
 
 # JWT setup
 SECRET_KEY = "/EyY1GnelIliNbL0Lempu5rEAzVZ5xQ4GWvO1dOTml0ouAA7EAmM5c84BoZPYlFi"
@@ -158,9 +160,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 
 from fastapi.responses import JSONResponse
-
-
-
 # @app.get('/login/google')
 # async def google_login(request: Request, db: Session = Depends(get_db)):
 #     try:
@@ -216,9 +215,6 @@ from fastapi.responses import JSONResponse
 #         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
         
-
-
-
         
 # @app.get("/login/microsoft")
 # async def microsoft_login(request: Request, db: Session = Depends(get_db)):
@@ -381,6 +377,26 @@ async def logout(request: Request, db: Session = Depends(get_db)):
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"}
         )
+    
+
+@app.post("/login")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    user_db = authenticate_user(db, user.username, user.password)
+    if not user_db:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    access_token, jit = create_token(user_db.user_id, user_db.username)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "user_id": user_db.user_id,
+            "username": user_db.username
+            }
+    }
+
+
 
 @app.post("/videos/upload")
 async def upload_video(
@@ -414,6 +430,9 @@ async def upload_video(
         db.commit()
         db.refresh(video)
 
+        # Xoa folder temp
+        shutil.rmtree("temp")
+
         # return {"message": "Video uploaded successfully", "file_url": file_url}
         return JSONResponse(
             status_code=200,
@@ -440,20 +459,26 @@ async def upload_video(
 #         }
 #     )
 
-#  Get all video_name of user in database
+#  Lấy video theo user_id trong token
 @app.get("/videos")
-async def get_videos_name(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_videos(
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)):
     videos = db.query(Video).filter(Video.user_id == current_user.user_id).all()
     return JSONResponse(
         status_code=200,
         content={
-            "Videos": [video.file_name for video in videos]
+            "Videos": [video.file_name for video in videos],
+            "URL": [video.file_url for video in videos]
         }
     )
 
 # Get video by video_name
 @app.get("/videos/{video_name}")
-async def get_video(video_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_video(
+    video_name: str, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)):
     video = db.query(Video).filter(Video.file_name == video_name).first()
     # Download video from S3 by video_name
     s3.s3_client.download_file(s3.bucket_name, video.file_name, f"temp/{video.file_name}")
@@ -464,21 +489,34 @@ async def get_video(video_name: str, current_user: User = Depends(get_current_us
         }
     )
 
-@app.post("/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    user_db = authenticate_user(db, user.username, user.password)
-    if not user_db:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    access_token, jit = create_token(user_db.user_id, user_db.username)
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "jit": jit,
-        "user": {
-            "user_id": user_db.user_id,
-            "username": user_db.username,
-            "email": user_db.email
+@app.delete("/videos/{video_name}")
+async def delete_video(video_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    video = db.query(Video).filter(Video.file_name == video_name).first()
+    if video.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this video")
+    # Delete video from S3
+    s3.s3_client.delete_object(Bucket=s3.bucket_name, Key=video.file_url.split("/")[-1])
+    # Delete video from database
+    db.delete(video)
+    db.commit()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Message": "Video deleted successfully!"
         }
-    }
+    )
+
+# Get file srt by video_name
+@app.get("/srt/{video_name}")
+async def get_srts(video_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Lay video id tu video_name
+    video = db.query(Video).filter(Video.file_name == video_name).first()
+    # Lay danh sach srt cua video
+    srts = db.query(SRT).filter(SRT.video_id == video.video_id).all()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "SRTs": [srt.srt_name for srt in srts],
+            "URL": [srt.srt_url for srt in srts]
+        }
+    )
