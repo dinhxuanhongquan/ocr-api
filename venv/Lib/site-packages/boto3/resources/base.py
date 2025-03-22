@@ -48,7 +48,9 @@ class ResourceMeta:
         self.resource_model = resource_model
 
     def __repr__(self):
-        return f'ResourceMeta(\'{self.service_name}\', identifiers={self.identifiers})'
+        return 'ResourceMeta(\'{}\', identifiers={})'.format(
+            self.service_name, self.identifiers
+        )
 
     def __eq__(self, other):
         # Two metas are equal if their components are all equal

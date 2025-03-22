@@ -26,8 +26,16 @@ class Settings(BaseSettings):
     AWS_REGION: Optional[str] = None
     S3_BUCKET: Optional[str] = None
     
+    # Additional fields
+    DIRECTORY_ID: Optional[str] = None
+    SESSION_SECRET_KEY: Optional[str] = None
+    AWS_BUCKET_NAME: Optional[str] = None
+    REGION_NAME: Optional[str] = None
+    JWT_SECRET_KEY: Optional[str] = None
+    JWT_EXPIRATION_TIME: Optional[int] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True
 
-settings = Settings() 
+settings = Settings()

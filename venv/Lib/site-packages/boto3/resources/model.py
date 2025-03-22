@@ -374,7 +374,9 @@ class ResourceModel:
                 # This isn't good, let's raise instead of trying to keep
                 # renaming this value.
                 raise ValueError(
-                    f'Problem renaming {self.name} {category} to {name}!'
+                    'Problem renaming {} {} to {}!'.format(
+                        self.name, category, name
+                    )
                 )
 
         names.add(name)
