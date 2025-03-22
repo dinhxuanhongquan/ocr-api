@@ -2,6 +2,7 @@
 Some light wrappers around Python's multiprocessing, to deal with cleanly
 starting child processes.
 """
+
 from __future__ import annotations
 
 import multiprocessing
@@ -9,7 +10,7 @@ import os
 import sys
 from multiprocessing.context import SpawnProcess
 from socket import socket
-from typing import Callable, Optional
+from typing import Callable
 
 from uvicorn.config import Config
 
@@ -34,10 +35,10 @@ def get_subprocess(
     """
     # We pass across the stdin fileno, and reopen it in the child process.
     # This is required for some debugging environments.
-    stdin_fileno: Optional[int]
     try:
         stdin_fileno = sys.stdin.fileno()
-    except OSError:
+    # The `sys.stdin` can be `None`, see https://docs.python.org/3/library/sys.html#sys.__stdin__.
+    except (AttributeError, OSError):
         stdin_fileno = None
 
     kwargs = {
@@ -69,10 +70,15 @@ def subprocess_started(
     """
     # Re-open stdin.
     if stdin_fileno is not None:
-        sys.stdin = os.fdopen(stdin_fileno)
+        sys.stdin = os.fdopen(stdin_fileno)  # pragma: full coverage
 
     # Logging needs to be setup again for each child.
     config.configure_logging()
 
-    # Now we can call into `Server.run(sockets=sockets)`
-    target(sockets=sockets)
+    try:
+        # Now we can call into `Server.run(sockets=sockets)`
+        target(sockets=sockets)
+    except KeyboardInterrupt:  # pragma: no cover
+        # supress the exception to avoid a traceback from subprocess.Popen
+        # the parent already expects us to end, so no vital information is lost
+        pass

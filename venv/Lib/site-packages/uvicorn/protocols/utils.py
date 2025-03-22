@@ -6,8 +6,7 @@ import urllib.parse
 from uvicorn._types import WWWScope
 
 
-class ClientDisconnected(IOError):
-    ...
+class ClientDisconnected(OSError): ...
 
 
 def get_remote_addr(transport: asyncio.Transport) -> tuple[str, int] | None:
@@ -53,7 +52,5 @@ def get_client_addr(scope: WWWScope) -> str:
 def get_path_with_query_string(scope: WWWScope) -> str:
     path_with_query_string = urllib.parse.quote(scope["path"])
     if scope["query_string"]:
-        path_with_query_string = "{}?{}".format(
-            path_with_query_string, scope["query_string"].decode("ascii")
-        )
+        path_with_query_string = "{}?{}".format(path_with_query_string, scope["query_string"].decode("ascii"))
     return path_with_query_string

@@ -12,6 +12,7 @@ from uuid import UUID
 
 from typing_extensions import deprecated
 
+from .._internal._import_utils import import_cached_base_model
 from ..color import Color
 from ..networks import NameEmail
 from ..types import SecretBytes, SecretStr
@@ -90,12 +91,12 @@ def pydantic_encoder(obj: Any) -> Any:
     )
     from dataclasses import asdict, is_dataclass
 
-    from ..main import BaseModel
+    BaseModel = import_cached_base_model()
 
     if isinstance(obj, BaseModel):
         return obj.model_dump()
     elif is_dataclass(obj):
-        return asdict(obj)
+        return asdict(obj)  # type: ignore
 
     # Check the class type and its superclasses for a matching encoder
     for base in obj.__class__.__mro__[:-1]:
