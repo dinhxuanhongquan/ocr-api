@@ -61,7 +61,7 @@ class Video(Base):
     # Quan hệ với SRT, VIDEO_TTS, VIDEO_SUB
     srt = relationship("SRT", back_populates="video", cascade="all, delete-orphan", passive_deletes=True)
     video_tts = relationship("VIDEO_TTS", back_populates="video", cascade="all, delete-orphan", passive_deletes=True)
-    video_sub = relationship("VIDEO_SUB", back_populates="video", cascade="all, delete-orphan", passive_deletes=True)
+    # video_sub = relationship("VIDEO_SUB", back_populates="video", cascade="all, delete-orphan", passive_deletes=True)
 
 #  Model SRT
 class SRT(Base):
@@ -71,6 +71,7 @@ class SRT(Base):
     video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
     srt_name = Column(String(255), nullable=False)
     srt_url = Column(String(500), nullable=False)
+    srt_url_sub = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=utc_plus_7)
 
     # Quan hệ với Video
@@ -78,7 +79,7 @@ class SRT(Base):
 
     # Quan hệ với VIDEO_TTS và VIDEO_SUB
     video_tts = relationship("VIDEO_TTS", back_populates="srt", cascade="all, delete-orphan", passive_deletes=True)
-    video_sub = relationship("VIDEO_SUB", back_populates="srt", cascade="all, delete-orphan", passive_deletes=True)
+    # video_sub = relationship("VIDEO_SUB", back_populates="srt", cascade="all, delete-orphan", passive_deletes=True)
 
 #  Model VIDEO_TTS
 class VIDEO_TTS(Base):
@@ -89,26 +90,27 @@ class VIDEO_TTS(Base):
     video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
     video_tts_name = Column(String(255), nullable=False)
     video_tts_url = Column(String(500), nullable=False)
+    video_sub_url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=utc_plus_7)
 
     # Quan hệ với SRT và Video
     srt = relationship("SRT", back_populates="video_tts")
     video = relationship("Video", back_populates="video_tts")
 
-#  Model VIDEO_SUB
-class VIDEO_SUB(Base):
-    __tablename__ = "video_sub"
+# #  Model VIDEO_SUB
+# class VIDEO_SUB(Base):
+#     __tablename__ = "video_sub"
 
-    video_sub_id = Column(Integer, primary_key=True, autoincrement=True)
-    srt_id = Column(Integer, ForeignKey("srt.srt_id", ondelete="CASCADE"), nullable=False)
-    video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
-    video_sub_name = Column(String(255), nullable=False)
-    video_sub_url = Column(String(500), nullable=False)
-    created_at = Column(DateTime, default=utc_plus_7)
+#     video_sub_id = Column(Integer, primary_key=True, autoincrement=True)
+#     srt_id = Column(Integer, ForeignKey("srt.srt_id", ondelete="CASCADE"), nullable=False)
+#     video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
+#     video_sub_name = Column(String(255), nullable=False)
+#     video_sub_url = Column(String(500), nullable=False)
+#     created_at = Column(DateTime, default=utc_plus_7)
 
-    # Quan hệ với SRT và Video
-    srt = relationship("SRT", back_populates="video_sub")
-    video = relationship("Video", back_populates="video_sub")
+#     # Quan hệ với SRT và Video
+#     srt = relationship("SRT", back_populates="video_sub")
+#     video = relationship("Video", back_populates="video_sub")
 
 #  Model BlackListToken
 class BlackListToken(Base):
