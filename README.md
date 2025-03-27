@@ -71,11 +71,11 @@ uvicorn main:app --reload
 
 ## API Endpoints
 
-- POST `/register` - Register a new user
-- POST `/login` - Login with username/password
-- GET `/login/google` - Google OAuth login
-- GET `/login/microsoft` - Microsoft OAuth login
-- POST `/logout` - Logout user
+- POST `/api/v1/auth/logout` - Logout user
+- POST `/api/v1/auth/login` - Login with username/password
+<!-- - GET `/login/google` - Google OAuth login
+- GET `/login/microsoft` - Microsoft OAuth login -->
+- POST `/api/v1/users/register` - Register a new user
 - POST `/videos/upload` - Upload a video file
 - GET `/videos`- Get all video of user
 - GET `/videos/{video_name}` Download video with video_name from S3

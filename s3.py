@@ -11,4 +11,6 @@ session = boto3.Session(
 s3_client = session.client('s3')
 
 # Bucket configuration
-bucket_name = "video-translation-storage-bucket"
+video_input_storage = "video-input-storge"
+srt_input_storage = "srt-input-storage"
+video_sub = "video-sub"

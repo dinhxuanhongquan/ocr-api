@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import sessionmaker, relationship, validates, declarative_base
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
@@ -6,11 +7,14 @@ import uuid
 import re
 
 # Cấu hình Database URL (encode mật khẩu)
+# password = quote_plus("Abc123456")
 password = quote_plus("Abc123456")
-endpoint = "database-video.c1siqkqs2a46.ap-southeast-2.rds.amazonaws.com"
+# endpoint = "database-video.c1siqkqs2a46.ap-southeast-2.rds.amazonaws.com"
+endpoint = "database-1.c1siqkqs2a46.ap-southeast-2.rds.amazonaws.com"
 port = "3306"
 database = "db_sub_video"
 user = "admin"
+
 SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{endpoint}:{port}/{database}"
 
 #  Kết nối Database
@@ -49,7 +53,7 @@ class User(Base):
 class Video(Base):
     __tablename__ = "videos"
 
-    video_id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False)
     file_name = Column(String(255), nullable=False)
     file_url = Column(String(500), nullable=False)
@@ -67,8 +71,8 @@ class Video(Base):
 class SRT(Base):
     __tablename__ = "srt"
     
-    srt_id = Column(Integer, primary_key=True, autoincrement=True)
-    video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
+    srt_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    video_id = Column(String(36), ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
     srt_name = Column(String(255), nullable=False)
     srt_url = Column(String(500), nullable=False)
     srt_url_sub = Column(String(500), nullable=False)
@@ -85,9 +89,9 @@ class SRT(Base):
 class VIDEO_TTS(Base):
     __tablename__ = "video_tts"
 
-    video_tts_id = Column(Integer, primary_key=True, autoincrement=True)
-    srt_id = Column(Integer, ForeignKey("srt.srt_id", ondelete="CASCADE"), nullable=False)
-    video_id = Column(Integer, ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
+    video_tts_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    srt_id = Column(String(36), ForeignKey("srt.srt_id", ondelete="CASCADE"), nullable=False)
+    video_id = Column(String(36), ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
     video_tts_name = Column(String(255), nullable=False)
     video_tts_url = Column(String(500), nullable=False)
     video_sub_url = Column(String(500), nullable=False)
