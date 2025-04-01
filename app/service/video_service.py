@@ -29,20 +29,13 @@ def get_all_relationship_with_video(
     video = db.query(Video).filter(Video.video_id == video_id).first()
     srt = db.query(SRT).filter(SRT.video_id == video_id).first()
     video_tts = db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).first()
-    return {"video": video, "srt": srt, "video_tts": video_tts}
+    return video, srt, video_tts
 
 def get_user_videos(
         db: Session, 
         user_id: str, 
         skip: int = 0, 
         limit: int = 100):
-    # videos = db.query(Video).filter(Video.user_id == user_id).offset(skip).limit(limit).all()
-    # os.makedirs("videos", exist_ok=True)
-    # video_tmp = "videos/"
-    # # download the videos from s3
-    # for video in videos:
-    #     video.file_url = video.file_url.split("/")[-1]
-    #     s3.download_file(settings.AWS_BUCKET_TEST, video.file_url, f"{video_tmp}{video.file_url}")
     return db.query(Video).filter(Video.user_id == user_id).offset(skip).limit(limit).all()
 
 def create_video(

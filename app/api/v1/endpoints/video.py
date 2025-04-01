@@ -93,7 +93,7 @@ async def upload_video(
         
         # Compress and upload video to S3
         # compress_file(video_tmp, video_tmp)
-        video_url = upload_file_to_s3(video_tmp, settings.AWS_BUCKET_TEST)
+        video_url = upload_file_to_s3(video_tmp, settings.AWS_BUCKET_INPUT_VIDEO)
 
         # Extract and translate subtitles
         try:
@@ -124,8 +124,8 @@ async def upload_video(
             db, 
             SRTCreate(
                 srt_name=unique_srtname, 
-                srt_url=upload_file_to_s3(srt_path, settings.AWS_BUCKET_TEST),
-                srt_url_sub=upload_file_to_s3(translate_srt_path, settings.AWS_BUCKET_TEST), 
+                srt_url=upload_file_to_s3(srt_path, settings.AWS_BUCKET_INPUT_SRT),
+                srt_url_sub=upload_file_to_s3(translate_srt_path, settings.AWS_BUCKET_INPUT_SRT), 
                 video_id=db_video.video_id
                 )
             )
@@ -232,12 +232,12 @@ async def add_subtitles_to_video_endpoint(
         try:
             download_file_from_s3(
                 srt_db.srt_url_sub,
-                settings.AWS_BUCKET_TEST,
+                settings.AWS_BUCKET_INPUT_SRT,
                 file_paths["srt"]
             )
             download_file_from_s3(
                 video_db.file_url,
-                settings.AWS_BUCKET_TEST,
+                settings.AWS_BUCKET_INPUT_SRT,
                 file_paths["video"]
             )
         except Exception as e:
@@ -253,9 +253,9 @@ async def add_subtitles_to_video_endpoint(
             file_paths["video"]
         )
         # xoa video cu tren s3
-        delete_file_from_s3(video_db.file_url, settings.AWS_BUCKET_TEST)
+        delete_file_from_s3(video_db.file_url, settings.AWS_BUCKET_INPUT_VIDEO)
         # Tai video moi len S3
-        new_video_url = upload_file_to_s3(file_paths["video"], settings.AWS_BUCKET_TEST)
+        new_video_url = upload_file_to_s3(file_paths["video"], settings.AWS_BUCKET_INPUT_VIDEO)
         # Update video URL in database
         video = video_service.update_video(db, video_id, VideoUpdate(file_url=new_video_url))
         return JSONResponse(
@@ -283,7 +283,7 @@ async def add_subtitles_to_video_endpoint(
             except Exception as e:
                 print(f"Warning: Failed to remove temporary file {file_path}: {str(e)}")
 
-
+# pass
 @router.post("/export/{video_id}/{voice}", response_model=None)
 async def export_video(
     video_id: str,
@@ -355,12 +355,12 @@ async def export_video(
         # Download files from S3
         dowload_srt = download_file_from_s3(
             srt_db.srt_url_sub,
-            settings.AWS_BUCKET_TEST,
+            settings.AWS_BUCKET_INPUT_SRT,
             file_paths["srt"]
         )
         download_video = download_file_from_s3(
             video_db.file_url,
-            settings.AWS_BUCKET_TEST,
+            settings.AWS_BUCKET_INPUT_VIDEO,
             file_paths["video"]
         )
         if not dowload_srt or not download_video:
@@ -392,7 +392,7 @@ async def export_video(
             output_video=os.path.join(temp_dirs["video"], "output_final_video.mp4")
         )
         # Tai video tts len S3
-        new_video_url = upload_file_to_s3(os.path.join(temp_dirs["video"], "output_final_video.mp4"), settings.AWS_BUCKET_TEST)
+        new_video_url = upload_file_to_s3(os.path.join(temp_dirs["video"], "output_final_video.mp4"), settings.AWS_BUCKET_VIDEO_SUB)
         # Craete new video tts
         video_tts = video_service.create_video_tts(db, VideoTTSCreate(video_tts_name=video_db.file_name, video_tts_url=new_video_url, video_id=video_db.video_id, srt_id=srt_db.srt_id))
         return JSONResponse(
@@ -505,8 +505,8 @@ async def upload_srt(
 
         # Replace old SRT files with new ones
         try:
-            new_srt_url = replace_file_on_s3(srt_db.srt_url, settings.AWS_BUCKET_TEST, file_paths["srt"])
-            new_srt_sub_url = replace_file_on_s3(srt_db.srt_url_sub, settings.AWS_BUCKET_TEST, file_paths["srt_sub"])
+            new_srt_url = replace_file_on_s3(srt_db.srt_url, settings.AWS_BUCKET_INPUT_SRT, file_paths["srt"])
+            new_srt_sub_url = replace_file_on_s3(srt_db.srt_url_sub, settings.AWS_BUCKET_INPUT_SRT, file_paths["srt_sub"])
         except Exception as e:
             raise HTTPException(
                 status_code=500,
@@ -555,7 +555,19 @@ async def get_videos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return video_service.get_user_videos(db, current_user.user_id, skip, limit)
+    videos = video_service.get_user_videos(db, current_user.user_id, skip, limit)
+    # download video from s3
+    os.makedirs("tempvideo", exist_ok=True)
+    video_tmp = "tempvideo/"
+    for video in videos:
+        video.file_name = video.file_name.split("/")[-1]
+        download_file_from_s3(video.file_url, settings.AWS_BUCKET_INPUT_VIDEO, video_tmp)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "Videos retrieved successfully"
+        }
+    )
     
 # pass
 @router.get("/{video_id}")
@@ -576,17 +588,21 @@ async def get_video_by_id(
             status_code=403,
             detail="User not authorized to access this video"
         )
+    video = video_service.get_video(db, video_id)
     # download video from s3
-    os.makedirs("tempvideodowload", exist_ok=True)
-    video_tmp = "tempvideodowload/"
+    os.makedirs("tempvideo", exist_ok=True)
+    video_tmp = "tempvideo/"
     video_db.file_name = video_db.file_name.split("/")[-1]
-    if download_file_from_s3(video_db.file_url, settings.AWS_BUCKET_TEST, video_tmp):
-        return video_service.get_video(db, video_id)
-    else :
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to download video from S3"
-        )
+    download_file_from_s3(video_db.file_url, settings.AWS_BUCKET_INPUT_VIDEO, f"{video_tmp}{video_db.file_name}")
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "Video retrieved successfully",
+            "video_id": video.video_id,
+            "filename": video.file_name
+        }
+    )
+
 
 # pass
 @router.get("/relas/{video_id}")
@@ -607,41 +623,100 @@ async def get_all_relationship_with_video(
             status_code=403,
             detail="User not authorized to access this video"
         )
-    return video_service.get_all_relationship_with_video(db, video_id)
+    video, srt, video_tts = video_service.get_all_relationship_with_video(db, video_id)
+    # download video from s3
+    temp_dirs = {
+        "srt": "tempsrt" ,
+        "video": "tempvideo"  
+    }
+    for dir_path in temp_dirs.values():
+        os.makedirs(dir_path, exist_ok=True)
+
+    # Extract filenames from URLs
+    try:
+        srt_filename = os.path.basename(srt.srt_url_sub)
+        video_filename = os.path.basename(video.file_url)
+        video_tts_filename = os.path.basename(video_tts.video_tts_url)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process file names: {str(e)}"
+        )
+    
+    # Define file paths
+    file_paths = {
+        "srt": os.path.join(temp_dirs["srt"], srt_filename),
+        "video": os.path.join(temp_dirs["video"], video_filename),
+        "video_tts": os.path.join(temp_dirs["video"], video_tts_filename)
+    }
+    try:
+        # Download files from S3
+        download_file_from_s3(
+            srt.srt_url_sub,
+            settings.AWS_BUCKET_INPUT_SRT,
+            file_paths["srt"]
+        )
+        download_file_from_s3(
+            video.file_url,
+            settings.AWS_BUCKET_INPUT_VIDEO,
+            file_paths["video"]
+        )
+        download_file_from_s3(
+            video_tts.video_tts_url,
+            settings.AWS_BUCKET_VIDEO_SUB,
+            file_paths["video_tts"]
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download files from S3: {str(e)}"
+        )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "Relationships retrieved successfully",
+            "srtname": srt.srt_name,
+            "filename": video.file_name,
+            "videottsname" : video_tts.video_tts_name
+        }
+    )
+    
+
 
 # pass
-@router.put("/{video_id}", response_model=None)
-async def update_video_by_id(
-    video_id: str,
-    video_update: VideoUpdate,  # Renamed parameter to avoid conflict
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Get existing video
-    db_video = db.query(Video).filter( Video.video_id == video_id).first()
-    if not db_video:
-        raise HTTPException(status_code=404, detail="Video not found")
+# @router.put("/{video_id}", response_model=None)
+# async def update_video_by_id(
+#     video_id: str,
+#     video_update: VideoUpdate,  # Renamed parameter to avoid conflict
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Get existing video
+#     db_video = db.query(Video).filter( Video.video_id == video_id).first()
+#     if not db_video:
+#         raise HTTPException(status_code=404, detail="Video not found")
 
-    # Check if user is authorized to update video
-    if current_user.user_id != db_video.user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to update this video"
-        )
-    # Only proceed with S3 operations if filename has changed
-    if video_update.file_name and video_update.file_name != db_video.file_name:
-        try:
-            # Copy to new name
-            new_url = replace_file_on_s3(db_video.file_name, video_update.file_name, settings.AWS_BUCKET_TEST)
-            # Update URL
-            video_update.file_url = new_url
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to update file in S3: {str(e)}"
-            )
+#     # Check if user is authorized to update video
+#     if current_user.user_id != db_video.user_id:
+#         raise HTTPException(
+#             status_code=403,
+#             detail="User not authorized to update this video"
+#         )
+#     # Only proceed with S3 operations if filename has changed
+#     if video_update.file_name and video_update.file_name != db_video.file_name:
+#         try:
+#             # Copy to new name
+#             new_url = replace_file_on_s3(db_video.file_name, video_update.file_name, settings.AWS_BUCKET_INPUT_VIDEO)
+#             # Update URL
+#             video_update.file_url = new_url
+#         except Exception as e:
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=f"Failed to update file in S3: {str(e)}"
+#             )
 
-    return video_service.update_video(db, video_id, video_update)
+#     return video_service.update_video(db, video_id, video_update)
+
 
 # pass
 @router.delete("/{video_id}", response_model=None)
@@ -651,10 +726,13 @@ async def delete_video_by_id(
     current_user: User = Depends(get_current_user)
 ):
     # xoa video tren s3
-    video = db.query(Video).filter(Video.video_id == video_id).first()
-    if not video:
+    video_db = db.query(Video).filter(Video.video_id == video_id).first()
+    if not video_db:
         raise HTTPException(status_code=404, detail="Video not found")
-    s3.delete_object(Bucket=settings.AWS_BUCKET_TEST, Key=video.file_name)
+    if current_user.user_id != video_db.user_id:
+        raise HTTPException(status_code=403, detail="User not authorized to delete this video")
+    # xoa video tren s3
+    delete_file_from_s3(video_db.file_url, settings.AWS_BUCKET_INPUT_VIDEO)
     return video_service.delete_video(db, video_id)
 
 
@@ -676,107 +754,115 @@ async def get_srt_by_video_id(
     # download srt from s3
     os.makedirs("tempsrt", exist_ok=True)
     srt_tmp = "tempsrt/"
-    srt_list = db.query(SRT).filter(SRT.video_id == video_id).all()
+    srt_list = video_service.get_srt_by_video_id(db, video_id)
     for srt in srt_list:
-        srt_name = srt.srt_name
-        s3.download_file(settings.AWS_BUCKET_TEST, srt_name, f"{srt_tmp}{srt_name}")
-    return video_service.get_srt_by_video_id(db, video_id)
+        srt.srt_name = srt.srt_name.split("/")[-1]
+        download_file_from_s3(srt.srt_url, settings.AWS_BUCKET_INPUT_SRT, f"{srt_tmp}{srt.srt_name}")
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "SRT files retrieved successfully"
+        }
+    )
 
 #  pass
-@router.get("/srt/{video_id}/{srt_id}", response_model=SRTSchema)
-async def get_srt(
-    srt_id: str,
-    video_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # 
-    srt_db = db.query(SRT).filter(SRT.srt_id == srt_id).first()
-    if srt_db.video_id != video_id or not srt_db:
-        raise HTTPException(status_code=404, detail="SRT not found")
-    video_db = db.query(Video).filter(Video.video_id == video_id).first()
-    if not video_db:
-        raise HTTPException(status_code=404, detail="Video not found")
-    if current_user.user_id != video_db.user_id:
-        raise HTTPException(status_code=403, detail="User not authorized to access")
-    # download srt from s3
-    os.makedirs("tempsrtdl", exist_ok=True)
-    srt_tmp = "tempsrtdl/"
-    srt_db.srt_name = srt_db.srt_name.split("/")[-1]
-    s3.download_file(settings.AWS_BUCKET_TEST, srt_db.srt_name, f"{srt_tmp}{srt_db.srt_name}")
-    return video_service.get_srt_by_srt_id(db=db, video_id=video_id, srt_id=srt_id)
+# @router.get("/srt/{video_id}/{srt_id}", response_model=SRTSchema)
+# async def get_srt(
+#     srt_id: str,
+#     video_id: str,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # 
+#     srt_db = db.query(SRT).filter(SRT.srt_id == srt_id).first()
+#     if srt_db.video_id != video_id or not srt_db:
+#         raise HTTPException(status_code=404, detail="SRT not found")
+#     video_db = db.query(Video).filter(Video.video_id == video_id).first()
+#     if not video_db:
+#         raise HTTPException(status_code=404, detail="Video not found")
+#     if current_user.user_id != video_db.user_id:
+#         raise HTTPException(status_code=403, detail="User not authorized to access")
+#     # download srt from s3
+#     os.makedirs("tempsrtdl", exist_ok=True)
+#     srt_tmp = "tempsrtdl/"
+#     srt_db.srt_name = srt_db.srt_name.split("/")[-1]
+#     s3.download_file(settings.AWS_BUCKET_INPUT_SRT, srt_db.srt_name, f"{srt_tmp}{srt_db.srt_name}")
+#     return video_service.get_srt_by_srt_id(db=db, video_id=video_id, srt_id=srt_id)
 
 # pass
-@router.delete("/srt/{srt_id}", response_model = None)
-async def delete_srt(
-    srt_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiểm tra xem srt có tồn tại không
-    if not db.query(SRT).filter(SRT.srt_id == srt_id).first():
-        raise HTTPException(status_code=404, detail="SRT not found")
-    # xoa srt tren s3
-    srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
-    s3.delete_object(Bucket=settings.AWS_BUCKET_TEST, Key = srt.srt_url.split("/")[-1])
-    return video_service.delete_srt(db, srt_id)
+# @router.delete("/srt/{srt_id}", response_model = None)
+# async def delete_srt(
+#     srt_id: str,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Kiểm tra xem srt có tồn tại không
+#     if not db.query(SRT).filter(SRT.srt_id == srt_id).first():
+#         raise HTTPException(status_code=404, detail="SRT not found")
+#     # xoa srt tren s3
+#     srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
+#     s3.delete_object(Bucket=settings.AWS_BUCKET_INPUT_SRT, Key = srt.srt_url.split("/")[-1])
+#     return video_service.delete_srt(db, srt_id)
 
-@router.put("/srt/{srt_id}", response_model = SRTSchema)
-async def update_srt(
-    srt_id: str,
-    srt: SRTUpdate,
 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiem tra Authorization
-    srt_db = db.query(SRT).filter(SRT.srt_id == srt_id).first()
-    if not srt_db:
-        raise HTTPException(status_code=404, detail="SRT not found")
-    video_db = db.query(Video).filter(Video.video_id == srt_db.video_id).first()
-    if not video_db:
-        raise HTTPException(status_code=404, detail="Video not found")
-    if current_user.user_id != video_db.user_id:
-        raise HTTPException(status_code=403, detail="User not authorized to access")
-    # Update
-    # Update srt tren s3
-    s3.copy_object(
-        Bucket=settings.AWS_BUCKET_TEST,
-        CopySource=f"{settings.AWS_BUCKET_TEST}/{srt_db.srt_url}",
-        Key=srt.srt_url
-    )
-    s3.copy_object(
-        Bucket=settings.AWS_BUCKET_TEST,
-        CopySource=f"{settings.AWS_BUCKET_TEST}/{srt_db.srt_url_sub}",
-        Key=srt.srt_url_sub
-    )
-    s3.delete_object(
-        Bucket=settings.AWS_BUCKET_TEST,
-        Key=srt_db.srt_url.split("/")[-1]
-    )
-    s3.delete_object(
-        Bucket=settings.AWS_BUCKET_TEST,
-        Key=srt_db.srt_url_sub.split("/")[-1]
-    )
-    return video_service.update_srt(db, srt_id, srt)
+# @router.put("/srt/{srt_id}", response_model = SRTSchema)
+# async def update_srt(
+#     srt_id: str,
+#     srt: SRTUpdate,
+
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Kiem tra Authorization
+#     srt_db = db.query(SRT).filter(SRT.srt_id == srt_id).first()
+#     if not srt_db:
+#         raise HTTPException(status_code=404, detail="SRT not found")
+#     video_db = db.query(Video).filter(Video.video_id == srt_db.video_id).first()
+#     if not video_db:
+#         raise HTTPException(status_code=404, detail="Video not found")
+#     if current_user.user_id != video_db.user_id:
+#         raise HTTPException(status_code=403, detail="User not authorized to access")
+#     # Update
+#     # Update srt tren s3
+#     s3.copy_object(
+#         Bucket=settings.AWS_BUCKET_INPUT_SRT,
+#         CopySource=f"{settings.AWS_BUCKET_INPUT_SRT}/{srt_db.srt_url}",
+#         Key=srt.srt_url
+#     )
+#     s3.copy_object(
+#         Bucket=settings.AWS_BUCKET_INPUT_SRT,
+#         CopySource=f"{settings.AWS_BUCKET_INPUT_SRT}/{srt_db.srt_url_sub}",
+#         Key=srt.srt_url_sub
+#     )
+#     s3.delete_object(
+#         Bucket=settings.AWS_BUCKET_INPUT_SRT,
+#         Key=srt_db.srt_url.split("/")[-1]
+#     )
+#     s3.delete_object(
+#         Bucket=settings.AWS_BUCKET_INPUT_SRT,
+#         Key=srt_db.srt_url_sub.split("/")[-1]
+#     )
+#     return video_service.update_srt(db, srt_id, srt)
+
 
 
 # Contact with VideoTTS
-@router.post("/videotts/upload/{srt_id}", response_model=VideoTTSSchema)  
-async def create_video_tts(
-    srt_id: str,
-    video_tts: VideoTTSCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiểm tra xem srt có tồn tại không
-    srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
-    if not srt:
-        raise HTTPException(status_code=404, detail="SRT not found")
+# @router.post("/videotts/upload/{srt_id}", response_model=VideoTTSSchema)  
+# async def create_video_tts(
+#     srt_id: str,
+#     video_tts: VideoTTSCreate,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Kiểm tra xem srt có tồn tại không
+#     srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
+#     if not srt:
+#         raise HTTPException(status_code=404, detail="SRT not found")
     
-    video_tts.video_id = srt.video_id
+#     video_tts.video_id = srt.video_id
     
-    return video_service.create_video_tts(db, video_tts)
+#     return video_service.create_video_tts(db, video_tts)
+
 
 @router.get("/videotts/{video_id}", response_model=list[VideoTTSSchema])
 async def get_video_tts(
@@ -785,21 +871,37 @@ async def get_video_tts(
     current_user: User = Depends(get_current_user)
 ):
     # Kiểm tra xem video có tồn tại không
-    if not db.query(Video).filter(Video.video_id == video_id).first():
+    video_db = db.query(Video).filter(Video.video_id == video_id).first()
+    video_tts_db = db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).all()
+    if not video_db or not video_tts_db:
         raise HTTPException(status_code=404, detail="Video not found")
+    if current_user.user_id != video_db.user_id:
+        raise HTTPException(status_code=403, detail="User not authorized to access")
     
-    return video_service.get_video_tts(db, video_id)
+    # download video tts from s3
+    os.makedirs("tempvideo", exist_ok=True)
+    video_tmp = "tempvideo/"
+    for video_tts in video_tts_db:
+        video_tts.video_tts_name = video_tts.video_tts_name.split("/")[-1]
+        download_file_from_s3(video_tts.video_tts_url, settings.AWS_BUCKET_VIDEO_SUB, f"{video_tmp}{video_tts.video_tts_name}")
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "Video TTS retrieved successfully"
+        }
+    )
 
-@router.get("/videotts/{video_tts_id}", response_model=VideoTTSSchema)
-async def get_video_tts_by_id(
-    video_tts_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiểm tra xem video có tồn tại không
-    if not db.query(VIDEO_TTS).filter(VIDEO_TTS.video_tts_id == video_tts_id).first():
-        raise HTTPException(status_code=404, detail="Video TTS not found")
-    return video_service.get_video_tts_by_id(db, video_tts_id)
+
+# @router.get("/videotts/{video_tts_id}", response_model=VideoTTSSchema)
+# async def get_video_tts_by_id(
+#     video_tts_id: str,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Kiểm tra xem video có tồn tại không
+#     if not db.query(VIDEO_TTS).filter(VIDEO_TTS.video_tts_id == video_tts_id).first():
+#         raise HTTPException(status_code=404, detail="Video TTS not found")
+#     return video_service.get_video_tts_by_id(db, video_tts_id)
 
 
 
