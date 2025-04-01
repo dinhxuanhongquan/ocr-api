@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from urllib.parse import quote_plus
 from datetime import datetime, timedelta, timezone
 import re
 import os
@@ -29,6 +30,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = "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"
     MICROSOFT_CLIENT_ID: str = "8c3e9e1f-836d-431a-a752-04af67b80154"
     MICROSOFT_CLIENT_SECRET: str = "0aa16d8a-a396-4e21-aa14-2a68a45786bc"
+
+    # AI settings
+    API_KEY: str = "AIzaSyA8ZA8tkG-Q4XM1iTbgeMuym942FVHo9oQ"
+    API_MODEL: str = "gemini-1.5-pro"
     
     class Config:
         env_file = ".env"

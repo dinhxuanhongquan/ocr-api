@@ -45,16 +45,18 @@ class SRT(SRTBase):
 class VideoTTSBase(BaseModel):
     video_tts_name: str
     video_tts_url: str
-    video_sub_url: str
-
-class VideoTTSCreate(VideoTTSBase):
     srt_id: str
     video_id: str
+
+class VideoTTSUpdate(VideoTTSBase):
+    video_tts_name: Optional[str] = None
+    video_tts_url: Optional[str] = None
+
+class VideoTTSCreate(VideoTTSBase):
+    pass
 
 class VideoTTS(VideoTTSBase):
     video_tts_id: str
-    srt_id: str
-    video_id: str
     created_at: datetime
 
     class Config:

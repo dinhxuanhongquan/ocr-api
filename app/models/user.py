@@ -2,7 +2,6 @@ from sqlalchemy import Column, String, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 from app.core.database import Base
-from datetime import datetime
 from app.core.config import utc_plus_7
 import re
 import uuid

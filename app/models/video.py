@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.core.config import utc_plus_7
 import uuid
-from datetime import datetime, timedelta
 
 
 
@@ -53,7 +52,6 @@ class VIDEO_TTS(Base):
     video_id = Column(String(36), ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
     video_tts_name = Column(String(255), nullable=False)
     video_tts_url = Column(String(500), nullable=False)
-    video_sub_url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=utc_plus_7)
 
     # Quan hệ với SRT và Video

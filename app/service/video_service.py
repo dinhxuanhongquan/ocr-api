@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.video import Video, SRT, VIDEO_TTS
-from app.schemas.video import VideoUpdate, SRTCreate, SRTUpdate, VideoTTSCreate
+from app.schemas.video import VideoUpdate, SRTCreate, SRTUpdate, VideoTTSCreate, VideoTTSUpdate, VideoTTS
 from fastapi import HTTPException, status
 from typing import List, Optional
 from app.core.config import get_settings
@@ -72,12 +72,25 @@ def update_video(
         video_id: str,
         video: VideoUpdate
         ):
-    db_video = get_video(db, video_id)
+    db_video = db.query(Video).filter(Video.video_id == video_id).first()
     if not db_video:
-        raise HTTPException(status_code=404, detail="Video not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Video not found")
     
-    db_video.file_name = video.file_name
-    db_video.file_url = video.file_url
+    old_video_name = db_video.file_name
+    old_video_url = db_video.file_url
+
+    # update video_name if it is not None
+    if video.file_name is not None:
+        db_video.file_name = video.file_name
+    else:
+        db_video.file_name = old_video_name
+    # update video_url if it is not None
+    if video.file_url is not None:
+        db_video.file_url = video.file_url
+    else:
+        db_video.file_url = old_video_url
     db.commit()
     db.refresh(db_video)
     return db_video
@@ -122,41 +135,41 @@ def delete_srt(
     db.commit()
     return {"message": "SRT deleted successfully"}
 
-# def update_srt(
-#         db: Session, 
-#         srt_id: str,
-#         srt: SRTUpdate
-#         ):
-#     db_srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
-#     if not db_srt:
-#         raise HTTPException(status_code=404, detail="SRT not found")
+def update_srt(
+        db: Session, 
+        srt_id: str,
+        srt: SRTUpdate
+        ):
+    db_srt = db.query(SRT).filter(SRT.srt_id == srt_id).first()
+    if not db_srt:
+        raise HTTPException(status_code=404, detail="SRT not found")
     
-#     old_srt_name = db_srt.srt_name
-#     old_srt_url = db_srt.srt_url
-#     old_srt_url_sub = db_srt.srt_url_sub
+    old_srt_name = db_srt.srt_name
+    old_srt_url = db_srt.srt_url
+    old_srt_url_sub = db_srt.srt_url_sub
 
-#     # update srt_name if it is not None
-#     if srt.srt_name is not None:
-#         db_srt.srt_name = srt.srt_name
-#     else:
-#         db_srt.srt_name = old_srt_name
-#     # update srt_url if it is not None
-#     if srt.srt_url is not None:
-#         db_srt.srt_url = srt.srt_url
-#     else:
-#         db_srt.srt_url = old_srt_url
-#     # update srt_url_sub if it is not None
-#     if srt.srt_url_sub is not None:
-#         db_srt.srt_url_sub = srt.srt_url_sub
-#     else:
-#         db_srt.srt_url_sub = old_srt_url_sub
-#     db.commit()
-#     db.refresh(db_srt)
-#     return db_srt
+    # update srt_name if it is not None
+    if srt.srt_name is not None:
+        db_srt.srt_name = srt.srt_name
+    else:
+        db_srt.srt_name = old_srt_name
+    # update srt_url if it is not None
+    if srt.srt_url is not None:
+        db_srt.srt_url = srt.srt_url
+    else:
+        db_srt.srt_url = old_srt_url
+    # update srt_url_sub if it is not None
+    if srt.srt_url_sub is not None:
+        db_srt.srt_url_sub = srt.srt_url_sub
+    else:
+        db_srt.srt_url_sub = old_srt_url_sub
+    db.commit()
+    db.refresh(db_srt)
+    return db_srt
 
 def create_video_tts(
         db: Session, 
-        video_tts: VideoTTSCreate
+        video_tts: VideoTTS
         ):
     db_video_tts = VIDEO_TTS(**video_tts.dict())
     db.add(db_video_tts)
