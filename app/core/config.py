@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # AWS settings
     AWS_ACCESS_KEY_ID: str = "AKIAW5WU5HNSQ4BPJH6H"
     AWS_SECRET_ACCESS_KEY: str = "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"
-    AWS_BUCKET_INPUT_VIDEO: str = "video-storge-bucket"
-    AWS_BUCKET_VIDEO_SUB: str = "video-ub"
+    AWS_BUCKET_INPUT_VIDEO: str = "video-input-storge"
+    AWS_BUCKET_VIDEO_SUB: str = "video-sub"
     AWS_BUCKET_INPUT_SRT: str = "srt-input-storage"
     AWS_BUCKET_TEST: str = "video-translation-storage-bucket"
     AWS_REGION: str = "ap-southeast-2"

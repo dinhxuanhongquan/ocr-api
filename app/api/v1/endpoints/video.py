@@ -393,7 +393,16 @@ async def export_video(
         )
         # Tai video tts len S3
         new_video_url = upload_file_to_s3(os.path.join(temp_dirs["video"], "output_final_video.mp4"), settings.AWS_BUCKET_VIDEO_SUB)
-        # Craete new video tts
+        # luu lai srt dich
+        new_srt_url = replace_file_on_s3(srt_db.srt_url_sub, settings.AWS_BUCKET_INPUT_SRT, os.path.join(temp_dirs["srt"], "output_srt.srt"))
+        # update tren database
+        srt_updated = video_service.update_srt(db, srt_db.srt_id, SRTUpdate(
+            srt_name=srt_db.srt_name, 
+            srt_url_sub=new_srt_url,
+            video_id=video_db.video_id
+        ))
+
+        # Create new video tts
         video_tts = video_service.create_video_tts(db, VideoTTSCreate(video_tts_name=video_db.file_name, video_tts_url=new_video_url, video_id=video_db.video_id, srt_id=srt_db.srt_id))
         return JSONResponse(
             status_code=201,
