@@ -237,7 +237,7 @@ async def add_subtitles_to_video_endpoint(
             )
             download_file_from_s3(
                 video_db.file_url,
-                settings.AWS_BUCKET_INPUT_SRT,
+                settings.AWS_BUCKET_INPUT_VIDEO,
                 file_paths["video"]
             )
         except Exception as e:
