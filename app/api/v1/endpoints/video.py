@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -12,7 +12,6 @@ from app.schemas.video import (
     )
 from app.service import video_service
 from app.core.config import get_settings
-from app.core.config import sanitize_filename
 from app.modules.video_process import extract_subtitles, translate_srt, compress_file
 from app.modules.module.module_meger_video_with_srt_translate import add_subtitles_to_video
 from app.modules.module.module_text_to_speech_v2 import generate_audio_from_srt
@@ -21,7 +20,6 @@ from app.modules.s3_process import upload_file_to_s3, download_file_from_s3, del
 import boto3
 import os
 import shutil
-from pathlib import Path
 import asyncio
 
 
@@ -566,17 +564,11 @@ async def get_videos(
 ):
     videos = video_service.get_user_videos(db, current_user.user_id, skip, limit)
     # download video from s3
-    os.makedirs("tempvideo", exist_ok=True)
-    video_tmp = "tempvideo/"
-    for video in videos:
-        video.file_name = video.file_name.split("/")[-1]
-        download_file_from_s3(video.file_url, settings.AWS_BUCKET_INPUT_VIDEO, video_tmp)
     return JSONResponse(
         status_code=200,
-        content={
-            "message": "Videos retrieved successfully"
-        }
+        content={ videos }
     )
+    
     
 # pass
 @router.get("/{video_id}")
@@ -585,32 +577,51 @@ async def get_video_by_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 
     video_db = db.query(Video).filter(Video.video_id == video_id).first()
     if not video_db:
-        raise HTTPException(
-            status_code=404, 
-            detail="Video not found"
-            )
+        raise HTTPException(status_code=404, detail="Video not exist")
     if current_user.user_id != video_db.user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this video"
-        )
-    video = video_service.get_video(db, video_id)
+        raise HTTPException(status_code=403, detail="User not authorized to access this video")
     # download video from s3
     os.makedirs("tempvideo", exist_ok=True)
     video_tmp = "tempvideo/"
     video_db.file_name = video_db.file_name.split("/")[-1]
-    download_file_from_s3(video_db.file_url, settings.AWS_BUCKET_INPUT_VIDEO, f"{video_tmp}{video_db.file_name}")
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "Video retrieved successfully",
-            "video_id": video.video_id,
-            "filename": video.file_name
-        }
+    download_file_from_s3(video_db.file_url, settings.AWS_BUCKET_INPUT_VIDEO, video_tmp)
+    return FileResponse(
+        path=os.path.join(video_tmp, video_db.file_name),
+        media_type="video/mp4",
+        filename=video_db.file_name
+    )   
+
+@router.get("/videotts/{video_id}", response_model=VideoTTSSchema)
+async def get_video_tts(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Kiểm tra xem video có tồn tại không
+    video_db = db.query(Video).filter(Video.video_id == video_id).first()
+    video_tts_db = db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).first()
+    if not video_db or not video_tts_db:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if current_user.user_id != video_db.user_id:
+        raise HTTPException(status_code=403, detail="User not authorized to access")
+    
+    # download video tts from s3
+    os.makedirs("tempvideo", exist_ok=True)
+    video_tmp = "tempvideo/"
+    
+    # Download video tts from S3
+    video_tts_db.video_tts_name = video_tts_db.video_tts_name.split("/")[-1]
+    download_file_from_s3(video_tts_db.video_tts_url, settings.AWS_BUCKET_VIDEO_SUB, f"{video_tmp}{video_tts_db.video_tts_name}")
+    return FileResponse(
+        path=os.path.join(video_tmp, video_tts_db.video_tts_name),
+        media_type="video/mp4",
+        filename=video_tts_db.video_tts_name
     )
+
+
+
 
 
 # pass
@@ -873,32 +884,6 @@ async def get_srt_by_video_id(
 #     return video_service.create_video_tts(db, video_tts)
 
 
-@router.get("/videotts/{video_id}", response_model=list[VideoTTSSchema])
-async def get_video_tts(
-    video_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiểm tra xem video có tồn tại không
-    video_db = db.query(Video).filter(Video.video_id == video_id).first()
-    video_tts_db = db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).all()
-    if not video_db or not video_tts_db:
-        raise HTTPException(status_code=404, detail="Video not found")
-    if current_user.user_id != video_db.user_id:
-        raise HTTPException(status_code=403, detail="User not authorized to access")
-    
-    # download video tts from s3
-    os.makedirs("tempvideo", exist_ok=True)
-    video_tmp = "tempvideo/"
-    for video_tts in video_tts_db:
-        video_tts.video_tts_name = video_tts.video_tts_name.split("/")[-1]
-        download_file_from_s3(video_tts.video_tts_url, settings.AWS_BUCKET_VIDEO_SUB, f"{video_tmp}{video_tts.video_tts_name}")
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "Video TTS retrieved successfully"
-        }
-    )
 
 
 # @router.get("/videotts/{video_tts_id}", response_model=VideoTTSSchema)

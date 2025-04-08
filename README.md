@@ -128,8 +128,10 @@ app/
 
 - `POST /api/v1/videos/upload`: Tải lên video đồng thời sẽ tạo ra 2 file srt(dubtitle.srt và tranlate.srt)
 - `POST /api/v1/videos/subtitles/{video_id}`: Tạo ra video_subtitle đồng thời chèn vào video gốc.
-- `GET /api/v1/videos`: Lấy danh sách video của người dùng và tải về thư mục tempvideo
-- `GET /api/v1/videos/{video_id}`: Lấy thông tin chi tiết video
+- `GET /api/v1/videos`: Lấy danh sách video của người dùng
+- `GET /api/v1/videos/{video_id}`: Lấy file video
+- `GET /api/v1/videos/videotts/{video_id}`: Lấy file videotts
+
 - `GET /api/v1/videos/relas/{video_id}`: lấy tất cả những gì liên quan đến video_id được truyền vào.
 - `DELETE /api/v1/videos/{video_id}`: Xóa video đồng thời sẽ xóa tất cả những gì lến quan đến video đó.
 
@@ -140,7 +142,6 @@ app/
 ### Export và TTS
 
 - `POST /api/v1/videos/export/{video_id}/{voice}`: Xuất video với audio TTS
-- `GET /api/v1/videos/videotts/{video_id}`: Lấy danh sách video TTS
 
 ## Cấu hình
 

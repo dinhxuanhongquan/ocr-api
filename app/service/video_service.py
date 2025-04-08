@@ -170,6 +170,7 @@ def create_video_tts(
     db.refresh(db_video_tts)
     return db_video_tts
 
+
 def get_video_tts(
         db: Session, 
         video_id: str

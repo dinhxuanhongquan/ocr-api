@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -9,6 +10,8 @@ from app.schemas.user import UserCreate,UserLogin, TokenRequest, Token as UserSc
 from app.models.user import User, BlackListToken
 from datetime import datetime, timedelta
 from app.core.config import get_settings
+from app.core.config import utc_plus_7
+
 
 
 settings = get_settings()
@@ -58,17 +61,15 @@ async def login_user(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token, jit = create_token(db_user.user_id, db_user.username, access_token_expires)
     
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "jit": jit
-    }
+    return JSONResponse(
+        content=access_token,
+        status_code=status.HTTP_200_OK
+    )
 
 @router.post("/logout", response_model=None)
 async def logout(
         request: Request,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        db: Session = Depends(get_db)
         ):
     # Get token from request
     auth_header = request.headers.get("Authorization")
@@ -94,7 +95,9 @@ async def logout(
         # Add token to blacklist
         blacklist_token = f"BLACK_LIST_{user_id}_{jit}"
 
-        db_token = BlackListToken(invalid_token=blacklist_token)
+        db_token = BlackListToken(
+            invalid_token=blacklist_token
+        )
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
