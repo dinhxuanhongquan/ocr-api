@@ -4,9 +4,6 @@ from app.core.database import Base
 from app.core.config import utc_plus_7
 import uuid
 
-
-
-
 #  Model Video
 class Video(Base):
     __tablename__ = "videos"

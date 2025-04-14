@@ -38,6 +38,15 @@ def get_user_videos(
         limit: int = 100):
     return db.query(Video).filter(Video.user_id == user_id).offset(skip).limit(limit).all()
 
+def get_video_tts(
+        db: Session, 
+        video_id: str,
+        skip: int = 0,
+        limit: int = 100
+        ):
+    return db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).offset(skip).limit(limit).all()
+
+
 def create_video(
         db: Session, 
         video: VideoUpdate, 
@@ -171,11 +180,6 @@ def create_video_tts(
     return db_video_tts
 
 
-def get_video_tts(
-        db: Session, 
-        video_id: str
-        ):
-    return db.query(VIDEO_TTS).filter(VIDEO_TTS.video_id == video_id).first()
 
 def get_video_tts_by_id(
         db: Session, 

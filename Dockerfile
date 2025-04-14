@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Tạo các thư mục cần thiết
-RUN mkdir -p tempvideo tempsrt tempaudio
+RUN mkdir -p tempvideo tempsrt tempaudio temp_thumbnails temp_processing
 
 # Cấu hình ImageMagick
 ENV IMAGEMAGICK_BINARY=/usr/bin/convert

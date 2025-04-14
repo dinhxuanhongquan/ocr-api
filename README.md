@@ -97,6 +97,7 @@ app/
 │   └── video.py
 ├── modules/
 │   ├── module/
+|   |___|__ module_export_video.py
 │   │   ├── module_meger_video_with_srt_translate.py
 │   │   ├── module_text_to_speech_v2.py
 │   │   └── module_process_with_video_sync.py
@@ -128,20 +129,27 @@ app/
 
 - `POST /api/v1/videos/upload`: Tải lên video đồng thời sẽ tạo ra 2 file srt(dubtitle.srt và tranlate.srt)
 - `POST /api/v1/videos/subtitles/{video_id}`: Tạo ra video_subtitle đồng thời chèn vào video gốc.
-- `GET /api/v1/videos`: Lấy danh sách video của người dùng
-- `GET /api/v1/videos/{video_id}`: Lấy file video
-- `GET /api/v1/videos/videotts/{video_id}`: Lấy file videotts
 
-- `GET /api/v1/videos/relas/{video_id}`: lấy tất cả những gì liên quan đến video_id được truyền vào.
+- `GET /api/v1/videos`: Lấy danh sách video của người dùng duoi dang preview
+
+- `GET /api/v1/videos/{video_id}`: Lấy file video
+
+- `GET /api/v1/videos/videotts/{video_tts_id}`: Lấy file videotts co thể thay cái này với export
+
+- `GET /api/v1/videos/videottes/{video_id}`: Lấy danh sách videoTTS theo video id gốc được upload lên dưới dạnh preview
+
 - `DELETE /api/v1/videos/{video_id}`: Xóa video đồng thời sẽ xóa tất cả những gì lến quan đến video đó.
+
+- `POST /api/v1/videos/videotts/export/{video_tts_id}`: Lấy video tts theo khung hình 9:16, anh Sỹ chỉ biết làm vậy thôi nên e cũng bó tay nhưng nó lỏ lắm đừng dùng
 
 ### Subtitle
 
-- `GET /api/v1/videos/srt/{video_id}`: Lấy danh sách phụ đề của video
+- `GET /api/v1/videos/srt/{video_id}/original`: Lấy srt chưa dịch
+- `GET /api/v1/video/srt/{video_id}/translated`: Lấy srt đã dịch
 
-### Export và TTS
+### VIDEO TTS
 
-- `POST /api/v1/videos/export/{video_id}/{voice}`: Xuất video với audio TTS
+- `POST /api/v1/videos/creation/{video_id}/{voice}`:Tạo video tts với audio TTS (voice có 2 giá trị cố định là 1 hoặc 2)
 
 ## Cấu hình
 
