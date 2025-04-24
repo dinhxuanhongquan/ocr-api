@@ -437,7 +437,7 @@ async def create_videotts(
             status_code=201,
             content={
                 "message": "Xuất video thành công",
-                "video_id": video_tts.video_tts_id,
+                "video_tts_id": video_tts.video_tts_id,
                 "filename": video_tts.video_tts_name
             }
         )

@@ -5,9 +5,10 @@ from moviepy.video.io.VideoFileClip import VideoFileClip, AudioFileClip
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from moviepy.video.VideoClip import TextClip, ColorClip
 
-os.environ['IMAGEMAGICK_BINARY'] = r"C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe"
-font_path = r"C:\Windows\Fonts\Arial.ttf"
 
+os.environ['IMAGEMAGICK_BINARY'] = r"C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe"
+# font_path = r"C:\Windows\Fonts\Arial.ttf"
+font_path = os.environ.get('FONT_PATH', r"C:\Windows\Fonts\Arial.ttf")
 
 def srt_time_to_seconds(time_obj):
     return time_obj.hour * 3600 + time_obj.minute * 60 + time_obj.second + time_obj.microsecond / 1e6

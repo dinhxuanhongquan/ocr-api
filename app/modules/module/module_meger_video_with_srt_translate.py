@@ -39,14 +39,19 @@ def add_subtitles_to_video(video_path, subtitle_path, output_path):
         os.makedirs(os.path.dirname(temp_output_path), exist_ok=True)
         
         # Đọc input video
-        video = ffmpeg.input(video_path)
+        video_input = ffmpeg.input(video_path)
+
+        # tach cac luong
+        video = video_input.video
+        audio = video_input.audio
+        
         
         # Thêm subtitles
-        video = ffmpeg.filter(video, 'subtitles', subtitle_path)
+        video_with_subs = ffmpeg.filter(video, 'subtitles', subtitle_path)
         
         # Các tham số output tối ưu hơn
         output = ffmpeg.output(
-            video, 
+            video_with_subs, audio, 
             temp_output_path,
             acodec='copy',  # Copy audio
             vcodec='libx264',  # Re-encode video
