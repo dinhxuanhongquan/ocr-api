@@ -9,16 +9,16 @@ class Settings(BaseSettings):
     app_name: str = "Video OCR"
     app_version: str = "1.0.0"
     # Database settings
-    DATABASE_URL: str = "mysql+pymysql://admin:Abc123456@database-1.c1siqkqs2a46.ap-southeast-2.rds.amazonaws.com:3306/db_sub_video"
+    DATABASE_URL: str = "mysql+pymysql://username:password@databasename.c1siqkqs2a46.ap-southeast-2.rds.amazonaws.com:3306/databasename"
     
     # JWT settings
-    SECRET_KEY: str = "/EyY1GnelIliNbL0Lempu5rEAzVZ5xQ4GWvO1dOTml0ouAA7EAmM5c84BoZPYlFi"
+    SECRET_KEY: str = "a_very_secret_key"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
     
     # AWS settings
-    AWS_ACCESS_KEY_ID: str = "AKIAW5WU5HNSQ4BPJH6H"
-    AWS_SECRET_ACCESS_KEY: str = "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"
+    AWS_ACCESS_KEY_ID: str = "a_access_key_id"
+    AWS_SECRET_ACCESS_KEY: str = "a_very_secret_key"
     AWS_BUCKET_INPUT_VIDEO: str = "video-input-storge"
     AWS_BUCKET_VIDEO_SUB: str = "video-sub"
     AWS_BUCKET_INPUT_SRT: str = "srt-input-storage"
@@ -26,15 +26,15 @@ class Settings(BaseSettings):
     AWS_REGION: str = "ap-southeast-2"
     
     # OAuth settings
-    GOOGLE_CLIENT_ID: str = "1024845742870-f5uj7qbrcqgnikipbd7u3j5rsmkfph4n.apps.googleusercontent.com"
-    GOOGLE_CLIENT_SECRET: str = "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"
-    MICROSOFT_CLIENT_ID: str = "8c3e9e1f-836d-431a-a752-04af67b80154"
-    MICROSOFT_CLIENT_SECRET: str = "0aa16d8a-a396-4e21-aa14-2a68a45786bc"
+    GOOGLE_CLIENT_ID: str = "your_client_id.apps.googleusercontent.com"
+    GOOGLE_CLIENT_SECRET: str = "your_client_secret"
+    MICROSOFT_CLIENT_ID: str = "your_microsoft_client_id"
+    MICROSOFT_CLIENT_SECRET: str = "your_microsoft_client_secret"
 
     # AI settings
-    API_KEY: str = "AIzaSyA8ZA8tkG-Q4XM1iTbgeMuym942FVHo9oQ"
-    API_MODEL: str = "gemini-1.5-pro"
-    
+    API_KEY: str = "your_api_key"
+    API_MODEL: str = "your_api_model"
+
     class Config:
         env_file = ".env"
 

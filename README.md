@@ -186,3 +186,7 @@ Cấu hình thông tin kết nối AWS S3 trong file `.env`.
 ## License
 
 MIT
+
+## Video demo
+
+[![Video Demo](https://img.youtube.com/vi/OmCG5RSSuFg/0.jpg)](https://youtu.be/OmCG5RSSuFg)
