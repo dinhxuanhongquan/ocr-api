@@ -167,7 +167,7 @@ FFmpeg cần được cài đặt và thêm vào PATH hệ thống.
 
 ### AWS S3
 
-Cấu hình thông tin kết nối AWS S3 trong file `.env`.
+Cấu hình thông tin kết nối AWS S3 trong file `app/core/config.py`.
 
 ## Yêu cầu nâng cao
 
@@ -183,9 +183,9 @@ Cấu hình thông tin kết nối AWS S3 trong file `.env`.
 - Thử chuyển đổi định dạng nếu không đọc được video
 - Xử lý encoding của file SRT
 
-## License
+## FrontEnd
 
-MIT
+[text](https://github.com/hungkarixkait/myapporc/tree/CLEANTHEME)
 
 ## Video demo
 
