@@ -185,7 +185,7 @@ Cấu hình thông tin kết nối AWS S3 trong file `app/core/config.py`.
 
 ## FrontEnd
 
-[text](https://github.com/hungkarixkait/myapporc/tree/CLEANTHEME)
+[Link GitHub của Giao diện](https://github.com/hungkarixkait/myapporc/tree/CLEANTHEME)
 
 ## Video demo
 
